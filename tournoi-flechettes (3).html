@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tournoi de Fléchettes</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;600;700&family=Barlow+Condensed:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --panel: #161616;
+    --border: #2a2a2a;
+    --gold: #f5c542;
+    --red: #e53935;
+    --green: #43a047;
+    --blue: #1e88e5;
+    --orange: #fb8c00;
+    --purple: #8e24aa;
+    --text: #f0f0f0;
+    --muted: #666;
+    --accent: #f5c542;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    min-height: 100vh;
+    padding: 24px;
+    user-select: none;
+  }
+
+  /* HEADER */
+  header {
+    text-align: center;
+    margin-bottom: 28px;
+    position: relative;
+  }
+
+  .dart-icon { font-size: 2.2rem; display: inline-block; transform: rotate(-45deg); margin-bottom: 4px; }
+
+  header h1 {
+    font-family: 'Bebas Neue', cursive;
+    font-size: clamp(2.8rem, 6vw, 5rem);
+    letter-spacing: 6px;
+    color: var(--gold);
+    text-shadow: 0 0 40px rgba(245,197,66,0.35);
+    line-height: 1;
+  }
+
+  header p {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .divider {
+    width: 120px;
+    height: 2px;
+    background: linear-gradient(to right, transparent, var(--gold), transparent);
+    margin: 12px auto 0;
+  }
+
+  /* PLAYER COLORS */
+  .c-arthur  { --pc: #f5c542; }
+  .c-dorian  { --pc: #e53935; }
+  .c-malik   { --pc: #43a047; }
+  .c-yassine { --pc: #1e88e5; }
+  .c-hugo    { --pc: #fb8c00; }
+
+  /* CLASSEMENT */
+  #ranking-section { margin-bottom: 28px; }
+
+  .section-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  #ranking-board {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .rank-row {
+    display: grid;
+    grid-template-columns: 40px 1fr 60px 60px 60px 80px 32px;
+    align-items: center;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--pc);
+    padding: 10px 14px;
+    border-radius: 4px;
+    transition: transform 0.2s, background 0.4s, box-shadow 0.4s;
+    gap: 8px;
+  }
+  .rank-row:hover { transform: translateX(3px); }
+
+  .rank-row.rank-flash {
+    background: rgba(245,197,66,0.12);
+    box-shadow: 0 0 18px rgba(245,197,66,0.25);
+    animation: flash-in 0.7s ease forwards;
+  }
+  @keyframes flash-in {
+    0% { background: rgba(245,197,66,0.28); box-shadow: 0 0 30px rgba(245,197,66,0.5); }
+    100% { background: var(--panel); box-shadow: none; }
+  }
+
+  .rank-delta {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 1rem;
+    text-align: center;
+    line-height: 1;
+    transition: all 0.3s;
+  }
+  .rank-delta.up   { color: var(--green); }
+  .rank-delta.down { color: var(--red); }
+  .rank-delta.same { color: var(--muted); font-size: 0.7rem; }
+
+  /* TOAST notification */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--panel);
+    border: 1px solid var(--gold);
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 1px;
+    color: var(--gold);
+    z-index: 200;
+    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s;
+    opacity: 0;
+    text-align: center;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  /* Points animés */
+  .pts-cell {
+    position: relative;
+  }
+  .pts-pop {
+    position: absolute;
+    top: -16px;
+    right: 0;
+    font-family: 'Bebas Neue', cursive;
+    font-size: 1rem;
+    color: var(--green);
+    animation: pts-fly 1.2s ease forwards;
+    pointer-events: none;
+  }
+  @keyframes pts-fly {
+    0%   { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-28px); }
+  }
+
+  .rank-num {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 1.6rem;
+    color: var(--muted);
+    text-align: center;
+  }
+  .rank-row:nth-child(1) .rank-num { color: #ffd700; font-size: 1.8rem; }
+  .rank-row:nth-child(2) .rank-num { color: #c0c0c0; }
+  .rank-row:nth-child(3) .rank-num { color: #cd7f32; }
+
+  .rank-name {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--pc);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .stat-cell {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.2;
+  }
+  .stat-cell span {
+    display: block;
+    font-family: 'Bebas Neue', cursive;
+    font-size: 1.3rem;
+    color: var(--text);
+  }
+
+  .pts-cell {
+    text-align: center;
+    font-family: 'Bebas Neue', cursive;
+    font-size: 2rem;
+    color: var(--gold);
+    text-shadow: 0 0 12px rgba(245,197,66,0.3);
+    position: relative;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 7px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tab:hover { border-color: var(--gold); color: var(--text); }
+  .tab.active {
+    background: var(--gold);
+    color: #000;
+    border-color: var(--gold);
+    font-weight: 700;
+  }
+
+  /* MATCHES TABLE */
+  .matches-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 10px;
+  }
+
+  .match-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .match-header {
+    background: #1f1f1f;
+    padding: 8px 14px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .match-played { color: var(--green); }
+  .match-pending { color: var(--muted); }
+
+  .match-body {
+    padding: 12px 14px;
+  }
+
+  .match-teams {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+
+  .team-names {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    flex: 1;
+  }
+
+  .player-tag {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.06);
+    border-left: 3px solid var(--pc);
+    color: var(--pc);
+  }
+
+  .vs-badge {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 1rem;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .match-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .score-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+  }
+
+  .score-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    min-width: 30px;
+  }
+
+  .score-input {
+    width: 50px;
+    background: #0d0d0d;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'Bebas Neue', cursive;
+    font-size: 1.4rem;
+    text-align: center;
+    padding: 4px 2px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .score-input:focus { border-color: var(--gold); }
+
+  .btn-validate {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn-validate:hover { opacity: 0.85; }
+
+  .btn-reset {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.7rem;
+    padding: 6px 10px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .btn-reset:hover { color: var(--red); border-color: var(--red); }
+
+  .played-result {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 1.5rem;
+    color: var(--gold);
+    letter-spacing: 2px;
+  }
+
+  /* POINTS SYSTEM */
+  .points-legend {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .legend-item {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 14px;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .legend-item strong {
+    color: var(--gold);
+    font-family: 'Bebas Neue', cursive;
+    font-size: 1.1rem;
+    margin-right: 4px;
+  }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: #333;
+    letter-spacing: 2px;
+    font-family: 'Oswald', sans-serif;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--gold);
+    border-radius: 8px;
+    padding: 28px;
+    max-width: 380px;
+    width: 90%;
+    text-align: center;
+  }
+  .modal h2 {
+    font-family: 'Bebas Neue', cursive;
+    font-size: 2rem;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+  .modal p { color: var(--muted); margin-bottom: 20px; font-size: 0.95rem; }
+  .modal-btns { display: flex; gap: 10px; justify-content: center; }
+  .modal-btns button {
+    font-family: 'Oswald', sans-serif;
+    padding: 10px 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .btn-confirm { background: var(--green); color: #fff; border: none; }
+  .btn-cancel { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+
+  @media (max-width: 600px) {
+    body { padding: 14px; }
+    .rank-row { grid-template-columns: 36px 1fr 50px 50px 50px 60px; font-size: 0.85rem; }
+    .matches-grid { grid-template-columns: 1fr; }
+  }
+
+  @media print {
+    .match-controls { display: none; }
+    .tabs { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="dart-icon">🎯</div>
+  <h1>Tournoi de Fléchettes</h1>
+  <p>Arthur · Dorian · Malik · Yassine · Hugo · Lucas</p>
+  <div class="divider"></div>
+</header>
+
+<!-- POINTS LEGEND -->
+<div class="points-legend">
+  <div class="legend-item"><strong>1v1 / 2v2</strong><br>🥇 Victoire : <strong>3 pts</strong> · Nul : <strong>1 pt</strong> · Défaite : <strong>0 pt</strong></div>
+  <div class="legend-item"><strong>Match à 3</strong><br>🥇 1er : <strong>4 pts</strong> · 🥈 2e : <strong>2 pts</strong> · 🥉 3e : <strong>0 pt</strong></div>
+  <div class="legend-item"><strong>Match à 4</strong><br>🥇 1er : <strong>6 pts</strong> · 🥈 2e : <strong>4 pts</strong> · 3e : <strong>2 pts</strong> · 4e : <strong>0 pt</strong></div>
+  <div class="legend-item"><strong>Match à 5</strong><br>🥇 1er : <strong>8 pts</strong> · 🥈 2e : <strong>6 pts</strong> · 3e : <strong>4 pts</strong> · 4e : <strong>2 pts</strong> · 5e : <strong>0 pt</strong></div>
+  <div class="legend-item"><strong>Match à 6</strong><br>🥇 1er : <strong>10 pts</strong> · 🥈 2e : <strong>8 pts</strong> · 3e : <strong>6 pts</strong> · 4e : <strong>4 pts</strong> · 5e : <strong>2 pts</strong> · 6e : <strong>0 pt</strong></div>
+</div>
+
+<!-- CLASSEMENT -->
+<section id="ranking-section">
+  <div class="section-title">🏆 Classement général</div>
+  <div id="ranking-board"></div>
+</section>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('1v1')">1 vs 1</button>
+  <button class="tab" onclick="switchTab('2v2')">2 vs 2</button>
+  <button class="tab" onclick="switchTab('3way')">Matchs à 3</button>
+  <button class="tab" onclick="switchTab('4way')">Matchs à 4</button>
+  <button class="tab" onclick="switchTab('5way')">Matchs à 5</button>
+  <button class="tab" onclick="switchTab('6way')">Match à 6</button>
+</div>
+
+<!-- MATCHES -->
+<div id="matches-container" class="matches-grid"></div>
+
+<!-- MODAL RESET -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2>Confirmer</h2>
+    <p>Réinitialiser ce match ? Les points seront recalculés.</p>
+    <div class="modal-btns">
+      <button class="btn-confirm" onclick="confirmReset()">Oui, réinitialiser</button>
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<footer>TOURNOI EN COURS · <span id="sync-status" style="color:var(--muted)">⏳ Connexion...</span></footer>
+<div id="toast"></div>
+
+<script>
+const PLAYERS = ['arthur','dorian','malik','yassine','hugo','lucas'];
+const COLORS = { arthur:'#f5c542', dorian:'#e53935', malik:'#43a047', yassine:'#1e88e5', hugo:'#fb8c00', lucas:'#ab47bc' };
+const NAMES  = { arthur:'Arthur', dorian:'Dorian', malik:'Malik', yassine:'Yassine', hugo:'Hugo', lucas:'Lucas' };
+
+// Barème points par position (index 0 = 1er)
+// 1v1/2v2 : [3, 0] + nul → 1 chacun
+// 3-way  : [4, 2, 0]
+// 4-way  : [6, 4, 2, 0]
+// 5-way  : [8, 6, 4, 2, 0]
+// 6-way  : [10, 8, 6, 4, 2, 0]
+const PTS_SCALE = {
+  2: [3, 0],
+  3: [4, 2, 0],
+  4: [6, 4, 2, 0],
+  5: [8, 6, 4, 2, 0],
+  6: [10, 8, 6, 4, 2, 0]
+};
+
+function generateMatches() {
+  const matches = { '1v1': [], '2v2': [], '3way': [], '4way': [], '5way': [], '6way': [] };
+  const p = PLAYERS;
+
+  // 1v1
+  for (let i = 0; i < p.length; i++)
+    for (let j = i+1; j < p.length; j++)
+      matches['1v1'].push({ id:`1v1_${p[i]}_${p[j]}`, teams:[[p[i]],[p[j]]], scores:[null,null], played:false });
+
+  // 2v2
+  for (let i = 0; i < p.length; i++)
+    for (let j = i+1; j < p.length; j++) {
+      const t1 = [p[i],p[j]];
+      const rest = p.filter(x => !t1.includes(x));
+      for (let k = 0; k < rest.length; k++)
+        for (let l = k+1; l < rest.length; l++) {
+          const t2 = [rest[k],rest[l]];
+          const id = `2v2_${[...t1].sort().join('')}_${[...t2].sort().join('')}`;
+          if (!matches['2v2'].find(m => m.id===id))
+            matches['2v2'].push({ id, teams:[t1,t2], scores:[null,null], played:false });
+        }
+    }
+
+  // 3-way
+  for (let i = 0; i < p.length; i++)
+    for (let j = i+1; j < p.length; j++)
+      for (let k = j+1; k < p.length; k++)
+        matches['3way'].push({ id:`3way_${p[i]}_${p[j]}_${p[k]}`, teams:[[p[i]],[p[j]],[p[k]]], scores:[null,null,null], played:false });
+
+  // 4-way : tous les groupes de 4
+  for (let i = 0; i < p.length; i++)
+    for (let j = i+1; j < p.length; j++)
+      for (let k = j+1; k < p.length; k++)
+        for (let l = k+1; l < p.length; l++) {
+          const group = [p[i],p[j],p[k],p[l]];
+          matches['4way'].push({ id:`4way_${group.join('_')}`, teams:group.map(pl=>[pl]), scores:group.map(()=>null), played:false });
+        }
+
+  // 5-way : tous les groupes de 5 (= exclure chaque joueur)
+  for (let i = 0; i < p.length; i++) {
+    const group = p.filter((_,idx) => idx!==i);
+    matches['5way'].push({ id:`5way_excl_${p[i]}`, teams:group.map(pl=>[pl]), scores:group.map(()=>null), played:false });
+  }
+
+  // 6-way : tous les 6 ensemble (1 seul match)
+  matches['6way'].push({ id:'6way_all', teams:p.map(pl=>[pl]), scores:p.map(()=>null), played:false });
+
+  return matches;
+}
+
+let matches = generateMatches();
+let pendingReset = null;
+let currentTab = '1v1';
+let isSyncing = false;
+
+const SHEET_ID = '1exkxpoXtG6aOorAz4CjbwYQdX_arBhCDHktjCDSCPFU';
+const API_KEY  = 'AIzaSyBZVUJiKNghbZ9esKEAwg75LLIJWb4Fzb0';
+const SHEET_NAME = 'Sheet1';
+const RANGE = `${SHEET_NAME}!A1`;
+
+function showSyncStatus(msg, color='var(--muted)') {
+  const el = document.getElementById('sync-status');
+  if (el) { el.textContent = msg; el.style.color = color; }
+}
+
+async function loadFromSheets() {
+  showSyncStatus('⏳ Chargement...', 'var(--gold)');
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}!A1?key=${API_KEY}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.values && json.values[0] && json.values[0][0]) {
+      const data = JSON.parse(json.values[0][0]);
+      for (const type in data)
+        if (matches[type])
+          data[type].forEach(sm => {
+            const m = matches[type].find(x => x.id===sm.id);
+            if (m) { m.scores=sm.scores; m.played=sm.played; }
+          });
+      showSyncStatus('✔ Synchronisé', 'var(--green)');
+    } else {
+      showSyncStatus('✔ Sheet vide, prêt', 'var(--green)');
+    }
+  } catch(e) {
+    showSyncStatus('⚠ Erreur de chargement', 'var(--red)');
+    console.error(e);
+  }
+}
+
+const APPS_SCRIPT_URL = 'https://script.google.com/a/macros/abiomis.com/s/AKfycbyp9OJFPEe-TYVBEwJ_aYuo8rBExH9Et9VnT056J8QjaQ9w-hA1sTc4N_KUYhRrw3C6uw/exec';
+
+async function saveToSheets() {
+  if (isSyncing) return;
+  isSyncing = true;
+  showSyncStatus('💾 Sauvegarde...', 'var(--gold)');
+  const data = {};
+  for (const type in matches)
+    data[type] = matches[type].map(m => ({ id:m.id, scores:m.scores, played:m.played }));
+  const value = JSON.stringify(data);
+  // Sauvegarde locale immédiate
+  localStorage.setItem('darts_tournament_v4', value);
+
+  if (!APPS_SCRIPT_URL) {
+    showSyncStatus('⚠ Apps Script non configuré', 'var(--orange)');
+    isSyncing = false;
+    return;
+  }
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: value })
+    });
+    showSyncStatus('✔ Sauvegardé', 'var(--green)');
+  } catch(e) {
+    showSyncStatus('⚠ Sauvegarde locale uniquement', 'var(--orange)');
+    console.error(e);
+  }
+  isSyncing = false;
+}
+
+// Polling toutes les 15 secondes pour détecter les modifs des autres
+async function pollSheets() {
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}!A1?key=${API_KEY}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.values && json.values[0] && json.values[0][0]) {
+      const data = JSON.parse(json.values[0][0]);
+      let changed = false;
+      for (const type in data)
+        if (matches[type])
+          data[type].forEach(sm => {
+            const m = matches[type].find(x => x.id===sm.id);
+            if (m && (m.played !== sm.played || JSON.stringify(m.scores) !== JSON.stringify(sm.scores))) {
+              m.scores=sm.scores; m.played=sm.played; changed=true;
+            }
+          });
+      if (changed) {
+        renderRanking(true);
+        renderMatches(currentTab);
+        showToast('🔄 Scores mis à jour par un autre joueur !');
+        showSyncStatus('✔ Synchronisé', 'var(--green)');
+      }
+    }
+  } catch(e) {}
+}
+
+function load() {
+  // Fallback localStorage si pas de réseau
+  const saved = localStorage.getItem('darts_tournament_v4');
+  if (saved) {
+    const data = JSON.parse(saved);
+    for (const type in data)
+      if (matches[type])
+        data[type].forEach(sm => {
+          const m = matches[type].find(x => x.id===sm.id);
+          if (m) { m.scores=sm.scores; m.played=sm.played; }
+        });
+  }
+}
+
+function save() {
+  saveToSheets();
+}
+
+function computeStats() {
+  const stats = {};
+  PLAYERS.forEach(p => stats[p] = { pts:0, wins:0, losses:0, draws:0, played:0 });
+
+  function processMatch(m) {
+    if (!m.played) return;
+    const n = m.teams.length;
+    const scores = m.scores.map(s => s===null ? 0 : Number(s));
+    const scale = PTS_SCALE[n];
+
+    if (n === 2) {
+      // 1v1 / 2v2
+      const [s0,s1] = scores;
+      const [t0,t1] = m.teams;
+      t0.forEach(p => stats[p].played++);
+      t1.forEach(p => stats[p].played++);
+      if (s0 > s1) {
+        t0.forEach(p => { stats[p].pts += scale[0]; stats[p].wins++; });
+        t1.forEach(p => { stats[p].pts += scale[1]; stats[p].losses++; });
+      } else if (s1 > s0) {
+        t1.forEach(p => { stats[p].pts += scale[0]; stats[p].wins++; });
+        t0.forEach(p => { stats[p].pts += scale[1]; stats[p].losses++; });
+      } else {
+        // Nul : 1pt chacun
+        m.teams.forEach(t => t.forEach(p => { stats[p].pts += 1; stats[p].draws++; }));
+      }
+    } else {
+      // Multi (3/4/5) : classement par score, attribuer scale[rank]
+      // En cas d'égalité : moyenne des pts des positions partagées
+      m.teams.forEach(t => t.forEach(p => stats[p].played++));
+
+      // Trier les équipes par score décroissant
+      const indexed = scores.map((s,i) => ({s,i})).sort((a,b) => b.s - a.s);
+
+      let pos = 0;
+      while (pos < indexed.length) {
+        // Trouver tous les ex-aequo
+        const curScore = indexed[pos].s;
+        let end = pos;
+        while (end < indexed.length && indexed[end].s === curScore) end++;
+        const tied = indexed.slice(pos, end);
+        // Points moyennés pour les ex-aequo
+        const ptsSum = tied.map((_,k) => scale[pos+k] ?? 0).reduce((a,b)=>a+b,0);
+        const ptsMean = Math.round(ptsSum / tied.length);
+        tied.forEach(({i}) => {
+          m.teams[i].forEach(p => {
+            stats[p].pts += ptsMean;
+            if (pos === 0 && tied.length === 1) stats[p].wins++;
+            else if (pos === 0) stats[p].draws++;
+            else if (end === indexed.length) stats[p].losses++;
+          });
+        });
+        pos = end;
+      }
+    }
+  }
+
+  for (const type in matches) matches[type].forEach(processMatch);
+  return stats;
+}
+
+let prevRanking = {};
+let prevPts = {};
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function renderRanking(animate=false) {
+  const stats = computeStats();
+  const sorted = PLAYERS.slice().sort((a,b) => {
+    if (stats[b].pts !== stats[a].pts) return stats[b].pts - stats[a].pts;
+    return stats[b].wins - stats[a].wins;
+  });
+
+  const board = document.getElementById('ranking-board');
+
+  let toastMsg = null;
+  if (animate) {
+    sorted.forEach((p, idx) => {
+      const newRank = idx+1;
+      const oldRank = prevRanking[p] ?? newRank;
+      if (oldRank > newRank) toastMsg = `🚀 ${NAMES[p]} monte à la ${newRank}${newRank===1?'ère':'ème'} place !`;
+    });
+  }
+
+  board.innerHTML = sorted.map((p, idx) => {
+    const newRank = idx+1;
+    const oldRank = prevRanking[p] ?? newRank;
+    const oldPts  = prevPts[p] ?? stats[p].pts;
+    const diff    = newRank - oldRank;
+    const ptsDiff = stats[p].pts - oldPts;
+
+    let deltaHTML = '';
+    if (!animate || diff===0) deltaHTML = `<div class="rank-delta same">—</div>`;
+    else if (diff < 0)        deltaHTML = `<div class="rank-delta up">▲${Math.abs(diff)}</div>`;
+    else                      deltaHTML = `<div class="rank-delta down">▼${diff}</div>`;
+
+    const ptsPopHTML = (animate && ptsDiff > 0) ? `<span class="pts-pop">+${ptsDiff}</span>` : '';
+    const flashClass = (animate && ptsDiff > 0) ? 'rank-flash' : '';
+
+    return `
+      <div class="rank-row c-${p} ${flashClass}" style="--pc:${COLORS[p]}">
+        <div class="rank-num">${newRank}</div>
+        <div class="rank-name">${NAMES[p]}</div>
+        <div class="stat-cell"><span>${stats[p].played}</span>Joués</div>
+        <div class="stat-cell"><span>${stats[p].wins}</span>Victoires</div>
+        <div class="stat-cell"><span>${stats[p].draws}</span>Nuls</div>
+        <div class="pts-cell">${stats[p].pts}${ptsPopHTML}</div>
+        ${deltaHTML}
+      </div>`;
+  }).join('');
+
+  sorted.forEach((p,idx) => { prevRanking[p]=idx+1; prevPts[p]=stats[p].pts; });
+  if (toastMsg) showToast(toastMsg);
+}
+
+function renderMatches(type) {
+  const container = document.getElementById('matches-container');
+  const typeLabels = { '1v1':'1 contre 1','2v2':'2 contre 2','3way':'Match à 3','4way':'Match à 4','5way':'Match à 5','6way':'Match à 6' };
+
+  container.innerHTML = matches[type].map((m, mi) => {
+    const teamsHTML = m.teams.map((team, ti) => {
+      const tags = team.map(p => `<span class="player-tag" style="--pc:${COLORS[p]};border-color:${COLORS[p]};color:${COLORS[p]}">${NAMES[p]}</span>`).join('');
+      return `<div class="team-names" style="flex-direction:column;gap:2px">${tags}</div>`;
+    }).join(`<div class="vs-badge">VS</div>`);
+
+    let controlsHTML = '';
+    if (m.played) {
+      // Afficher avec classement
+      const indexed = m.scores.map((s,i) => ({s:Number(s),i})).sort((a,b)=>b.s-a.s);
+      const medals = ['🥇','🥈','🥉','4e','5e'];
+      const scoreStr = m.teams.map((t,i) => {
+        const rank = indexed.findIndex(x=>x.i===i);
+        return `${medals[rank]||''} ${t.map(p=>NAMES[p]).join('+')} <b>${m.scores[i]}</b>`;
+      }).join(' &nbsp;·&nbsp; ');
+      controlsHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div class="played-result" style="font-size:1rem;letter-spacing:1px">${scoreStr}</div>
+          <button class="btn-reset" onclick="askReset('${type}',${mi})">↩ Reset</button>
+        </div>`;
+    } else {
+      const inputs = m.teams.map((t,ti) =>
+        `<div class="score-group">
+          <span class="score-label" style="color:${COLORS[t[0]]}">${t.map(p=>NAMES[p][0]).join('+')}</span>
+          <input class="score-input" type="number" min="0" id="score_${type}_${mi}_${ti}" placeholder="0">
+        </div>`
+      ).join('');
+      controlsHTML = `
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px">
+          ${inputs}
+          <button class="btn-validate" onclick="validateMatch('${type}',${mi})">✓ Valider</button>
+        </div>`;
+    }
+
+    const statusClass = m.played ? 'match-played' : 'match-pending';
+    const statusLabel = m.played ? '✔ Joué' : '⏳ À jouer';
+
+    return `
+      <div class="match-card">
+        <div class="match-header">
+          <span>${typeLabels[type]}</span>
+          <span class="${statusClass}">${statusLabel}</span>
+        </div>
+        <div class="match-body">
+          <div class="match-teams">${teamsHTML}</div>
+          ${controlsHTML}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  renderMatches(tab);
+}
+
+function validateMatch(type, mi) {
+  const m = matches[type][mi];
+  const scores = m.teams.map((_,ti) => {
+    const val = document.getElementById(`score_${type}_${mi}_${ti}`).value;
+    return val==='' ? null : Number(val);
+  });
+  if (scores.some(s => s===null || isNaN(s))) { alert('Entrez tous les scores avant de valider.'); return; }
+  m.scores = scores;
+  m.played = true;
+  save();
+  renderRanking(true);
+  renderMatches(type);
+}
+
+function askReset(type, mi) {
+  pendingReset = {type, mi};
+  document.getElementById('modal').classList.add('show');
+}
+function closeModal() {
+  pendingReset = null;
+  document.getElementById('modal').classList.remove('show');
+}
+function confirmReset() {
+  if (!pendingReset) return;
+  const {type, mi} = pendingReset;
+  const m = matches[type][mi];
+  m.scores = m.teams.map(() => null);
+  m.played = false;
+  save();
+  renderRanking(false);
+  renderMatches(type);
+  closeModal();
+}
+
+// INIT
+load(); // localStorage fallback immédiat
+const _s = computeStats();
+const _sorted = PLAYERS.slice().sort((a,b) => _s[b].pts-_s[a].pts || _s[b].wins-_s[a].wins);
+_sorted.forEach((p,i) => { prevRanking[p]=i+1; prevPts[p]=_s[p].pts; });
+renderRanking(false);
+renderMatches('1v1');
+
+// Charger depuis Sheets puis polling
+loadFromSheets().then(() => {
+  const _s2 = computeStats();
+  const _sorted2 = PLAYERS.slice().sort((a,b) => _s2[b].pts-_s2[a].pts || _s2[b].wins-_s2[a].wins);
+  _sorted2.forEach((p,i) => { prevRanking[p]=i+1; prevPts[p]=_s2[p].pts; });
+  renderRanking(false);
+  renderMatches(currentTab);
+});
+setInterval(pollSheets, 15000);
+</script>
+</body>
+</html>
