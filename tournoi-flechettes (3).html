@@ -609,14 +609,15 @@ function showSyncStatus(msg, color='var(--muted)') {
   if (el) { el.textContent = msg; el.style.color = color; }
 }
 
+const APPS_SCRIPT_URL = 'https://script.google.com/a/macros/abiomis.com/s/AKfycbyp9OJFPEe-TYVBEwJ_aYuo8rBExH9Et9VnT056J8QjaQ9w-hA1sTc4N_KUYhRrw3C6uw/exec';
+
 async function loadFromSheets() {
   showSyncStatus('⏳ Chargement...', 'var(--gold)');
   try {
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}!A1?key=${API_KEY}`;
-    const res = await fetch(url);
-    const json = await res.json();
-    if (json.values && json.values[0] && json.values[0][0]) {
-      const data = JSON.parse(json.values[0][0]);
+    const res = await fetch(APPS_SCRIPT_URL + '?action=read');
+    const text = await res.text();
+    if (text && text !== 'EMPTY') {
+      const data = JSON.parse(text);
       for (const type in data)
         if (matches[type])
           data[type].forEach(sm => {
@@ -625,15 +626,13 @@ async function loadFromSheets() {
           });
       showSyncStatus('✔ Synchronisé', 'var(--green)');
     } else {
-      showSyncStatus('✔ Sheet vide, prêt', 'var(--green)');
+      showSyncStatus('✔ Prêt', 'var(--green)');
     }
   } catch(e) {
     showSyncStatus('⚠ Erreur de chargement', 'var(--red)');
     console.error(e);
   }
 }
-
-const APPS_SCRIPT_URL = 'https://script.google.com/a/macros/abiomis.com/s/AKfycbyp9OJFPEe-TYVBEwJ_aYuo8rBExH9Et9VnT056J8QjaQ9w-hA1sTc4N_KUYhRrw3C6uw/exec';
 
 async function saveToSheets() {
   if (isSyncing) return;
@@ -643,14 +642,7 @@ async function saveToSheets() {
   for (const type in matches)
     data[type] = matches[type].map(m => ({ id:m.id, scores:m.scores, played:m.played }));
   const value = JSON.stringify(data);
-  // Sauvegarde locale immédiate
   localStorage.setItem('darts_tournament_v4', value);
-
-  if (!APPS_SCRIPT_URL) {
-    showSyncStatus('⚠ Apps Script non configuré', 'var(--orange)');
-    isSyncing = false;
-    return;
-  }
   try {
     await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -666,14 +658,12 @@ async function saveToSheets() {
   isSyncing = false;
 }
 
-// Polling toutes les 15 secondes pour détecter les modifs des autres
 async function pollSheets() {
   try {
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}!A1?key=${API_KEY}`;
-    const res = await fetch(url);
-    const json = await res.json();
-    if (json.values && json.values[0] && json.values[0][0]) {
-      const data = JSON.parse(json.values[0][0]);
+    const res = await fetch(APPS_SCRIPT_URL + '?action=read');
+    const text = await res.text();
+    if (text && text !== 'EMPTY') {
+      const data = JSON.parse(text);
       let changed = false;
       for (const type in data)
         if (matches[type])
@@ -686,11 +676,11 @@ async function pollSheets() {
       if (changed) {
         renderRanking(true);
         renderMatches(currentTab);
-        showToast('🔄 Scores mis à jour par un autre joueur !');
+        showToast('🔄 Scores mis à jour !');
         showSyncStatus('✔ Synchronisé', 'var(--green)');
       }
     }
-  } catch(e) {}
+  } catch(e) { console.error(e); }
 }
 
 function load() {
