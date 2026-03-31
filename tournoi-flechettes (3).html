@@ -644,12 +644,8 @@ async function saveToSheets() {
   const value = JSON.stringify(data);
   localStorage.setItem('darts_tournament_v4', value);
   try {
-    await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: value })
-    });
+    const url = APPS_SCRIPT_URL + '?action=write&data=' + encodeURIComponent(value);
+    await fetch(url);
     showSyncStatus('✔ Sauvegardé', 'var(--green)');
   } catch(e) {
     showSyncStatus('⚠ Sauvegarde locale uniquement', 'var(--orange)');
